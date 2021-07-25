@@ -1,0 +1,333 @@
+
+Comment out the password
+And check our Sercive Port no.
+
+........................................................................................Entity...............................................................................................
+
+1-Address Entity
+@entity
+public
+@Id
+
+2-Customer Entity
+@entity
+public
+@Id
+@GeneratedValue(strategy=GenerationType.IDENTITY)-Predefined @Anotation
+@column(name="emailid")- Not Compl.
+@OneToOne(cascade=CascadeType.ALL)-Primary Key,Check RelationShip
+@JoinColumn(name="ForeignKey", Unique=true)-Mapping
+
+
+.......................................................................................Repository............................................................................................
+
+1-public interface CustomerRepository extends CrudRepository<project_name,integer>
+						(Cursor for import)
+
+2-public interface CustomerRepository extends CrudRepository<project_name,integer>
+						(Cursor for import)
+
+
+
+.......................................................................................Utility Classes.......................................................................................
+
+1-LoggingAspects
+
+importss
+
+@Component
+@Aspect
+public class LoggingAspect {
+	public static final Log LOGGER = LogFactory.getLog(LoggingAspect.class);
+	@AfterThrowing(pointcut = "execution(* com.infy.service.*Impl.*(..))", throwing = "exception")
+	public void logServiceException(Exception exception) {
+		LOGGER.error(exception.getMessage(), exception);
+	}
+}
+
+
+
+
+........................................................................................ServiceImpl..........................................................................................
+
+@Service(value="Given")
+@Transactional
+public class ProjectAllocationServiceImpl implements ProjectAllocationService{
+@Autowired
+private ProjectRepository projectRepository;
+
+@Autowired
+private MentorRepository mentorRepository
+........................................................................................List.................................................................................................
+@Override
+	public List<CustomerDTO> getAllCustomers() throws InfyBankException {
+		Iterable<Customer> customers = customerRepository.findAll();
+		List<CustomerDTO> customerDTOs = new ArrayList<>();
+		customers.forEach(customer -> {
+
+			CustomerDTO cust = new CustomerDTO();
+			cust.setCustomerId(customer.getCustomerId());
+			cust.setDateOfBirth(customer.getDateOfBirth());
+			cust.setEmailId(customer.getEmailId());
+			cust.setName(customer.getName());
+			customerDTOs.add(cust);
+
+
+		MobileDTO.....................................
+
+
+
+
+
+
+
+
+
+
+
+		});
+		if (customerDTOs.isEmpty())
+			throw new InfyBankException("Service.CUSTOMERS_NOT_FOUND");
+		return customerDTOs;
+	}
+}
+
+														public class CustomerServiceImpl implements CustomerService {
+																	@Autowired
+															private CustomerRepository customerRepository;
+
+
+
+	@Override
+	public CustomerDTO getCustomer(Integer customerId) throws InfyBankException {
+		Optional<Customer> optional = customerRepository.findById(customerId);
+		Customer customer = optional.orElseThrow(() -> new InfyBankException("Service.INVALID_CUSTOMERID"));-Change according to QP
+#######Put This method into list also 	
+	
+		CustomerDTO customerDTO = new CustomerDTO();
+		customerDTO.setCustomerId(customer.getCustomerId());
+		customerDTO.setName(customer.getName());
+		customerDTO.setEmailId(customer.getEmailId());
+		customerDTO.setDateOfBirth(customer.getDateOfBirth());
+
+#######Put This method into list also
+
+		AddressDTO addressDTO = new AddressDTO();
+		addressDTO.setAddressId(customer.getAddress().getAddressId());
+		addressDTO.setCity(customer.getAddress().getCity());
+		addressDTO.setStreet(customer.getAddress().getStreet());
+		customerDTO.setAddress(addressDTO);
+		return customerDTO;
+
+
+		MobileDTO...........................................
+
+
+
+
+
+
+
+
+
+
+
+
+
+	}
+}
+	@Override
+	public Integer addCustomer(CustomerDTO customerDTO) {
+		Customer customer = new Customer();
+		customer.setCustomerId(customerDTO.getCustomerId());
+		customer.setDateOfBirth(customerDTO.getDateOfBirth());
+		customer.setEmailId(customerDTO.getEmailId());
+		customer.setName(customerDTO.getName());
+		
+		Address address = new Address();
+		address.setAddressId(customerDTO.getAddress().getAddressId());
+		address.setCity(customerDTO.getAddress().getCity());
+		address.setStreet(customerDTO.getAddress().getStreet());
+		
+		customer.setAddress(address);
+		customerRepository.save(customer);
+		return customer.getCustomerId();
+	}
+	@Override
+	public void updateAddress(Integer customerId, AddressDTO addressDTO) throws InfyBankException {
+		Optional<Customer> optional = customerRepository.findById(customerId);
+		Customer customer = optional.orElseThrow(() -> new InfyBankException("Service.INVALID_CUSTOMERID"));
+		Address address = customer.getAddress();
+		address.setCity(addressDTO.getCity());
+		address.setStreet(addressDTO.getStreet());
+	}
+	
+	@Override
+	public void deleteCustomer(Integer customerId) throws InfyBankException {
+		Optional<Customer> optional = customerRepository.findById(customerId);
+		Customer customer = optional.orElseThrow(() -> new InfyBankException("Service.INVALID_CUSTOMERID"));
+		customerRespository.delete(customer);
+	}
+	@Override
+	public void deleteCustomerOnly(Integer customerId) throws InfyBankException {
+		Optional<Customer> optional = customerRepository.findById(customerId);
+		Customer customer = optional.orElseThrow(() -> new InfyBankException("Service.INVALID_CUSTOMERID"));
+		customer.setAddress(null);
+		customerRespository.delete(customer);
+	}
+}
+
+
+								ManyToOne.................................................
+
+Step 33 
+
+
+..................................................................................RestAPI....................................................................................................
+
+
+@RestController
+@RequestMapping(value = "/infybank")-(Given in QP)
+public class CustomerAPI {
+	@Autowired
+	private CustomerService customerService;
+	@Autowired
+	private Environment environment;
+
+
+
+
+
+Without Try Cache block
+
+
+
+	@GetMapping(value = "/customers")-(Given in QP)
+	public ResponseEntity<List<CustomerDTO>> getAllCustomers() throws InfyBankException {
+		List<CustomerDTO> customerDTOs = customerService.getAllCustomers();
+		return new ResponseEntity<>(customerDTOs, HttpStatus.OK);
+	}
+	@GetMapping(value = "/customers/{customerId}")
+	public ResponseEntity<CustomerDTO> getCustomer(@PathVariable Integer customerId) throws InfyBankException {
+		CustomerDTO customerDTO = customerService.getCustomer(customerId);
+		return new ResponseEntity<>(customerDTO, HttpStatus.OK);
+	}
+	@PostMapping(value = "/customers")
+	public ResponseEntity<String> addCustomer(@RequestBody CustomerDTO customerDTO) throws InfyBankException {
+		Integer customerId = customerService.addCustomer(customerDTO);
+		String successMessage = environment.getProperty("API.INSERT_SUCCESS") + customerId;
+		return new ResponseEntity<>(successMessage, HttpStatus.CREATED);
+	}
+	@PutMapping(value = "/customers/{customerId}")
+	public ResponseEntity<String> updateCustomer(@PathVariable Integer customerId, @RequestBody CustomerDTO customer)
+			throws InfyBankException {
+		customerService.updateCustomer(customerId, customer.getEmailId());
+		String successMessage = environment.getProperty("API.UPDATE_SUCCESS");
+		return new ResponseEntity<>(successMessage, HttpStatus.OK);
+	}
+	@DeleteMapping(value = "/customers/{customerId}")
+	public ResponseEntity<String> deleteCustomer(@PathVariable Integer customerId) throws InfyBankException {
+		customerService.deleteCustomer(customerId);
+		String successMessage = environment.getProperty("API.DELETE_SUCCESS");
+		return new ResponseEntity<>(successMessage, HttpStatus.OK);
+	}
+}
+
+
+
+With Try Cache
+
+
+
+
+@GetMapping(value = "/customers")
+	public ResponseEntity<List<CustomerDTO>> getAllCustomers() throws InfyBankException {
+		try {
+		List<CustomerDTO> customerDTOs = customerService.getAllCustomers(); (Changes acc. to QP)
+		return new ResponseEntity<>(customerDTOs, HttpStatus.OK);
+		} catch (Exception exception) {
+			throw new ResponseStatusException(HttpStatus.NOT_FOUND, environment.getProperty(exception.getMessage()), exception);
+		}
+	}
+	@GetMapping(value = "/customers/{customerId}")
+	public ResponseEntity<CustomerDTO> getCustomer(@PathVariable Integer customerId) throws InfyBankException {
+		try {
+			CustomerDTO customerDTO = customerService.getCustomer(customerId);
+			return new ResponseEntity<>(customerDTO, HttpStatus.OK);
+		} catch (Exception exception) {
+			throw new ResponseStatusException(HttpStatus.NOT_FOUND, environment.getProperty(exception.getMessage()), exception);
+		}
+	}
+	@PostMapping(value = "/customers")
+	public ResponseEntity<String> addCustomer(@RequestBody CustomerDTO customerDTO) throws InfyBankException {
+		try {
+			Integer customerId = customerService.addCustomer(customerDTO);
+			String successMessage = environment.getProperty("API.INSERT_SUCCESS") + customerId;
+			return new ResponseEntity<>(successMessage, HttpStatus.CREATED);
+		} catch (Exception exception) {
+			throw new ResponseStatusException(HttpStatus.NOT_FOUND, environment.getProperty(exception.getMessage()), exception);
+		}
+	}
+	@PutMapping(value = "/customers/{customerId}")
+	public ResponseEntity<String> updateCustomer(@PathVariable Integer customerId, @RequestBody CustomerDTO customer)
+			throws InfyBankException {
+		try {
+			customerService.updateCustomer(customerId, customer.getEmailId());
+			String successMessage = environment.getProperty("API.UPDATE_SUCCESS");
+			return new ResponseEntity<>(successMessage, HttpStatus.OK);
+		} catch (Exception exception) {
+			throw new ResponseStatusException(HttpStatus.NOT_FOUND, environment.getProperty(exception.getMessage()), exception);
+		}
+	}
+	@DeleteMapping(value = "/customers/{customerId}")
+	public ResponseEntity<String> deleteCustomer(@PathVariable Integer customerId) throws InfyBankException {
+		try {
+			customerService.deleteCustomer(customerId);
+			String successMessage = environment.getProperty("API.DELETE_SUCCESS");
+			return new ResponseEntity<>(successMessage, HttpStatus.OK);
+		} catch (Exception exception) {
+			throw new ResponseStatusException(HttpStatus.NOT_FOUND, environment.getProperty(exception.getMessage()), exception);
+		}
+	}
+}
+
+
+
+
+
+....................................................................................................................................Postman...................................................................................................................................
+
+
+
+https://localhost:serviceportno/infymobile/customer/2001
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+							
